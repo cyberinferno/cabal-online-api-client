@@ -1,0 +1,8 @@
+.character-select {
+  cursor: pointer;
+}
+
+.character-select.active {
+  color: darkred;
+  font-weight: bold;
+}

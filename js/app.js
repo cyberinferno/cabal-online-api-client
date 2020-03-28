@@ -3,13 +3,17 @@ const API_URL = 'http://localhost:3000';
 const REGISTER_URL = API_URL + '/account/register';
 const LOGIN_URL = API_URL + '/account/login';
 const TOKEN_VALIDITY_URL = API_URL + '/account/me';
+const CHARACTER_URL = API_URL + '/character';
 
 // HTML elements used in the application
 var $sidePanelBody = $('#side-panel-body');
 var $sidePanelTitle = $('#side-panel-title');
 var $mainPanelBody = $('#main-panel-body');
 var $mainPanelTitle = $('#main-panel-title');
-var $body = $('body')
+var $body = $('body');
+var postRouteFunction = {
+  'content/characters.html': 'LoadCharacters'
+};
 
 $(function() {
   // Stop running the application if local storage isn't available
@@ -119,6 +123,34 @@ $(function() {
     localStorage.removeItem('user');
     LoadSidePanel('content/login.html', 'Login');
   });
+
+  // Character select handler
+  $body.on('click', '.character-select', function(e) {
+    e.preventDefault();
+    $('.character-select').removeClass('active');
+    $(this).addClass('active');
+    var CharacterIdx = $(this).data('id');
+    DoRequest('content/character.html', 'get', function(html) {
+      $('#character-info').html(html);
+      DoJsonGetRequest(CHARACTER_URL + '/' + CharacterIdx, function(data) {
+        for (var key in data) {
+          if (key == 'CharacterIdx') {
+            continue;
+          }
+          $('<tr/>', {
+            html: '<td>' + key + '</td><th>' + data[key] + '</th>'
+          }).appendTo('#character-info-table');
+        }
+      }, function(xhr) {
+        var decodedData = JSON.parse(xhr.responseText);
+        if (decodedData.errors && decodedData.errors.length != 0 && decodedData.errors[0].msg) {
+          $('#character-info-container').html(decodedData.errors[0].msg);
+        } else {
+          $('#character-info-container').text('Failed to fetch character data');
+        }
+      });
+    });
+  });
 });
 
 function PopulateSidePanelInfo(user) {
@@ -144,7 +176,7 @@ function LoadSidePanel(url, title, onAfterLoad = null) {
       onAfterLoad();
     }
   }, function(xhr) {
-    $sidePanelBody.html(xhr.ResponseText);
+    $sidePanelBody.html(xhr.responseText);
   });
 }
 
@@ -159,8 +191,29 @@ function LoadMainPanel(url, title, onAfterLoad = null) {
     if (typeof onAfterLoad === 'function') {
       onAfterLoad();
     }
+    if (postRouteFunction[url]) {
+      window[postRouteFunction[url]]();
+    }
   }, function(xhr) {
-    $mainPanelBody.html(xhr.ResponseText);
+    $mainPanelBody.html(xhr.responseText);
+  });
+}
+
+function LoadCharacters() {
+  DoJsonGetRequest(CHARACTER_URL, function(data) {
+    if (data.characters && data.characters.length !== 0) {
+      for (let i = 0; i < data.characters.length; i++) {
+        $('<div/>', {
+          class: 'panel character-select',
+          'data-id': data.characters[i].CharacterIdx,
+          html: '<img src="img/' + data.characters[i].Class + '.png">&nbsp;' + data.characters[i].Name
+        }).appendTo('#character-list');
+      }
+    } else {
+      $('#character-info').text('You do no have any characters');
+    }
+  }, function() {
+    $('#character-info').text('You do no have any characters');
   });
 }
 
